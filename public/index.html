@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatterli - Stream TTS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        .chat-scroll { max-height: 400px; overflow-y: auto; }
+        .bg-chatterli { background: #fdf2f2; }
+        .btn-ch { background: #e31e24; color: white; transition: 0.2s; }
+        .btn-ch:hover { background: #b1161a; }
+        /* Flaggen-Button Stil */
+        .lang-btn { opacity: 0.5; transition: 0.2s; cursor: pointer; filter: grayscale(100%); }
+        .lang-btn.active { opacity: 1; font-weight: bold; filter: grayscale(0%); transform: scale(1.1); }
+    </style>
+</head>
+<body class="bg-chatterli min-h-screen font-sans">
+    <div class="max-w-4xl mx-auto p-6">
+        <!-- HEADER -->
+        <header class="flex items-center justify-between mb-8 border-b pb-4">
+            <h1 class="text-3xl font-bold text-red-600 flex items-center gap-2">
+                Chatterli <span class="text-gray-400 text-lg">🇨🇭</span>
+            </h1>
+            
+            <div class="flex items-center gap-4">
+                <!-- Sprachumschalter -->
+                <div class="flex gap-2 bg-white px-2 py-1 rounded-full border shadow-sm">
+                    <button onclick="setLang('de')" id="btn-de" class="lang-btn active text-lg" title="Deutsch">🇩🇪</button>
+                    <div class="text-gray-300">|</div>
+                    <button onclick="setLang('en')" id="btn-en" class="lang-btn text-lg" title="English">🇺🇸</button>
+                </div>
+                
+                <!-- Status -->
+                <div id="status" class="text-sm px-3 py-1 bg-gray-200 rounded-full text-gray-600 font-medium" data-i18n="status_offline">Offline</div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- SIDEBAR: CONTROLS -->
+            <div class="space-y-4">
+                
+                <!-- 1. SETTINGS / VOICE BOX (NEU) -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-blue-100">
+                    <h2 class="font-bold mb-3 text-gray-800 flex items-center gap-2">
+                        <span class="text-blue-500">⚙️</span> 
+                        <span data-i18n="settings_title">Einstellungen</span>
+                    </h2>
+                    
+                    <label class="text-xs font-bold text-gray-500 mb-1 block" data-i18n="voice_label">TTS Stimme</label>
+                    <select id="voiceSelect" onchange="changeVoice()" class="w-full p-2 border rounded text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-blue-200">
+                        <option value="de-DE-Neural2-F">🇩🇪 Google DE (Weiblich)</option>
+                        <option value="de-DE-Neural2-B">🇩🇪 Google DE (Männlich)</option>
+                        <option value="en-US-Neural2-C">🇺🇸 Google EN (Female)</option>
+                        <option value="en-US-Neural2-D">🇺🇸 Google EN (Male)</option>
+                        <hr>
+                        <option value="local">💻 Windows / Lokal</option>
+                    </select>
+                </div>
+
+                <!-- 2. Channels Box -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border">
+                    <h2 class="font-bold mb-3 text-gray-800" data-i18n="connect_title">Kanäle verbinden</h2>
+                    
+                    <div class="mb-4">
+                        <label class="text-xs font-bold text-purple-600 mb-1 block">TWITCH</label>
+                        <input id="twitchChan" type="text" placeholder="Kanalname (z.B. gronkh)" class="w-full p-2 border rounded mb-2 text-sm focus:ring-2 focus:ring-purple-200 outline-none transition">
+                        <button onclick="connectTwitch()" class="w-full btn-ch p-2 rounded text-sm font-bold bg-purple-600 hover:bg-purple-700" data-i18n="btn_twitch">Twitch Verbinden</button>
+                    </div>
+                    
+                    <hr class="my-4 border-gray-100">
+                    
+                    <div>
+                        <label class="text-xs font-bold text-red-600 mb-1 block">YOUTUBE</label>
+                        <input id="youtubeId" type="text" placeholder="Channel ID oder Handle" class="w-full p-2 border rounded mb-2 text-sm focus:ring-2 focus:ring-red-200 outline-none transition">
+                        <button onclick="connectYoutube()" class="w-full btn-ch p-2 rounded text-sm font-bold" data-i18n="btn_youtube">YouTube Verbinden</button>
+                    </div>
+                </div>
+
+                <!-- 3. Mute Box -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border">
+                    <h2 class="font-bold mb-3 text-gray-800" data-i18n="mute_title">Stummi User</h2>
+                    <div id="muteList" class="text-xs space-y-1 text-gray-500 italic">
+                        <span data-i18n="no_muted">Keine</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MAIN: CHAT HISTORY -->
+            <div class="md:col-span-2 space-y-4">
+                <div id="chatBox" class="bg-white rounded-xl shadow-sm border h-[500px] flex flex-col">
+                    <div class="p-3 border-b bg-gray-50 font-bold text-sm text-gray-700 flex justify-between">
+                        <span data-i18n="chat_title">Live Chat Nachrichten</span>
+                        <button onclick="clearChat()" class="text-xs text-gray-400 hover:text-red-500" data-i18n="clear_chat">Leeren</button>
+                    </div>
+                    <div id="messages" class="chat-scroll flex-1 p-4 space-y-3">
+                        <div class="text-gray-400 text-sm text-center mt-10 italic" data-i18n="waiting_msg">Warte uf Nachrichte...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        
+        // Queue speichert jetzt Objekte: { type: 'server'|'local', data: ... }
+        const audioQueue = [];
+        let isPlaying = false;
+        
+        // --- TRANSLATION LOGIC ---
+        let currentLang = localStorage.getItem('chatterli_lang') || 'de';
+        
+        const translations = {
+            de: {
+                status_offline: "Offline",
+                status_connected: "Verbunde",
+                connect_title: "Kanäle verbinde",
+                settings_title: "Einstellungen",
+                voice_label: "TTS Stimme",
+                btn_twitch: "Twitch Verbinde",
+                btn_youtube: "YouTube Verbinde",
+                mute_title: "Stummi User",
+                no_muted: "Keine",
+                chat_title: "Live Chat Nachrichten",
+                clear_chat: "Leeren",
+                waiting_msg: "Warte uf Nachrichte...",
+                mute_btn: "STUMM",
+                ph_twitch: "Kanalname (z.B. gronkh)",
+                ph_youtube: "Channel ID oder Handle"
+            },
+            en: {
+                status_offline: "Offline",
+                status_connected: "Connected",
+                connect_title: "Connect Channels",
+                settings_title: "Settings",
+                voice_label: "TTS Voice",
+                btn_twitch: "Connect Twitch",
+                btn_youtube: "Connect YouTube",
+                mute_title: "Muted Users",
+                no_muted: "None",
+                chat_title: "Live Chat Messages",
+                clear_chat: "Clear",
+                waiting_msg: "Waiting for messages...",
+                mute_btn: "MUTE",
+                ph_twitch: "Channel Name (e.g. ninja)",
+                ph_youtube: "Channel ID or Handle"
+            }
+        };
+
+        function setLang(lang) {
+            currentLang = lang;
+            localStorage.setItem('chatterli_lang', lang);
+            
+            // Buttons visual update
+            document.getElementById('btn-de').classList.toggle('active', lang === 'de');
+            document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+
+            // Text content update
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[lang][key]) {
+                    el.innerText = translations[lang][key];
+                }
+            });
+
+            // Placeholder updates
+            document.getElementById('twitchChan').placeholder = translations[lang]['ph_twitch'];
+            document.getElementById('youtubeId').placeholder = translations[lang]['ph_youtube'];
+        }
+
+        // Init Language on Load
+        setLang(currentLang);
+
+        // --- SOCKET LOGIC ---
+
+        socket.on('connect', () => {
+            const statusEl = document.getElementById('status');
+            statusEl.innerText = translations[currentLang]['status_connected'];
+            statusEl.className = "text-sm px-3 py-1 bg-green-100 rounded-full text-green-600 font-medium";
+            
+            // Sync Voice mit Server (optional, aber gut für reconnect)
+            changeVoice();
+        });
+
+        function changeVoice() {
+            const voiceId = document.getElementById('voiceSelect').value;
+            socket.emit('change_voice', voiceId);
+        }
+
+        function connectTwitch() {
+            const chan = document.getElementById('twitchChan').value;
+            socket.emit('join_twitch', chan);
+        }
+
+        function connectYoutube() {
+            const id = document.getElementById('youtubeId').value;
+            socket.emit('join_youtube', id);
+        }
+
+        function clearChat() {
+            document.getElementById('messages').innerHTML = `<div class="text-gray-400 text-sm text-center mt-10 italic" data-i18n="waiting_msg">${translations[currentLang]['waiting_msg']}</div>`;
+        }
+
+        socket.on('system_msg', (msg) => {
+            let displayMsg = msg;
+            if (msg.includes("Verbunde mit")) displayMsg = currentLang === 'en' ? msg.replace("Verbunde mit", "Connected to") : msg;
+            addMessage('System', displayMsg, 'gray');
+        });
+
+        socket.on('blocklist_update', (list) => {
+            const div = document.getElementById('muteList');
+            if (list.length === 0) {
+                div.innerHTML = `<span data-i18n="no_muted">${translations[currentLang]['no_muted']}</span>`;
+                return;
+            }
+            div.innerHTML = list.map(u => `
+                <div class="flex justify-between items-center bg-gray-50 p-1 rounded border mb-1">
+                    <span class="font-mono text-gray-600">${u}</span>
+                    <button onclick="unmute('${u}')" class="text-red-500 font-bold hover:bg-red-50 px-2 rounded">✕</button>
+                </div>
+            `).join('');
+        });
+
+        socket.on('chat_message', (data) => {
+            addMessage(data.user, data.text, data.platform === 'twitch' ? 'purple' : 'red', data.id);
+            
+            // Audio Queue Logik
+            if (data.audio) {
+                // Server hat MP3 Audio geschickt (Google TTS)
+                audioQueue.push({ type: 'server', content: data.audio });
+            } else {
+                // Server hat KEIN Audio geschickt -> Wir nutzen Lokale Stimme
+                // Wir nehmen an, wenn data.audio null ist, ist "local" ausgewählt
+                audioQueue.push({ type: 'local', text: `${data.user}: ${data.text}` });
+            }
+            
+            playNext();
+        });
+
+        function addMessage(user, text, color, id) {
+            const container = document.getElementById('messages');
+            if (container.querySelector('[data-i18n="waiting_msg"]')) container.innerHTML = '';
+            
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `p-3 rounded-lg bg-gray-50 border-l-4 border-${color}-500 flex justify-between items-start shadow-sm hover:shadow-md transition`;
+            msgDiv.innerHTML = `
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-${color}-600 text-sm">${user}</span>
+                        ${id ? `<span class="text-[10px] text-gray-300">${new Date().toLocaleTimeString()}</span>` : ''}
+                    </div>
+                    <span class="text-gray-700 text-sm leading-relaxed block mt-1">${text}</span>
+                </div>
+                ${user !== 'System' ? `<button onclick="mute('${user}')" class="text-[10px] text-gray-400 hover:text-red-500 font-bold tracking-wider ml-2 py-1 px-2 border border-transparent hover:border-red-200 rounded transition">${translations[currentLang]['mute_btn']}</button>` : ''}
+            `;
+            container.prepend(msgDiv);
+        }
+
+        function mute(user) { socket.emit('mute_user', user); }
+        function unmute(user) { socket.emit('unmute_user', user); }
+
+        function playNext() {
+            if (isPlaying || audioQueue.length === 0) return;
+            
+            const task = audioQueue[0];
+            isPlaying = true;
+
+            if (task.type === 'server') {
+                // Google Cloud MP3 abspielen
+                const audio = new Audio("data:audio/mp3;base64," + task.content);
+                audio.onended = () => {
+                    audioQueue.shift(); // Task entfernen
+                    isPlaying = false;
+                    playNext();
+                };
+                audio.play().catch(e => {
+                    console.error("Audio play error", e);
+                    audioQueue.shift();
+                    isPlaying = false;
+                });
+            } else if (task.type === 'local') {
+                // Lokale Browser Stimme nutzen
+                const utterance = new SpeechSynthesisUtterance(task.text);
+                
+                // Optional: Versuchen, Sprache basierend auf App-Einstellung zu setzen
+                // (Die Browser-Erkennung ist oft ungenau, daher simple Logik)
+                utterance.lang = currentLang === 'de' ? 'de-DE' : 'en-US'; 
+                
+                utterance.onend = () => {
+                    audioQueue.shift(); // Task entfernen
+                    isPlaying = false;
+                    playNext();
+                };
+                
+                // Falls Browser Probleme hat
+                utterance.onerror = () => {
+                    audioQueue.shift();
+                    isPlaying = false;
+                    playNext();
+                };
+
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+    </script>
+</body>
+</html>
