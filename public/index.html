@@ -107,17 +107,24 @@
 
                     <div>
                         <label class="text-xs font-bold text-red-600 mb-1 block">YOUTUBE</label>
-                        <input id="youtubeId" type="text" placeholder="Channel ID oder Handle" class="w-full p-2 border
-                        rounded mb-2 text-sm focus:ring-2 focus:ring-red-200 outline-none transition">
+                        <input id="youtubeId" type="text" placeholder="Channel ID oder Handle"
+                            class="w-full p-2 border rounded mb-2 text-sm focus:ring-2 focus:ring-red-200 outline-none transition">
                         <button onclick="connectYoutube()" class="w-full btn-ch p-2 rounded text-sm font-bold"
                             data-i18n="btn_youtube">YouTube Verbinden</button>
                     </div>
                 </div>
 
-                <!-- 3. Mute Box -->
+                <!-- 3. Disconnect & Mute Box -->
                 <div class="bg-white p-4 rounded-xl shadow-sm border">
-                    <h2 class="font-bold mb-3 text-gray-800" data-i18n="mute_title">Stumme User</h2>
-                    <div id="muteList" class="text-xs space-y-1 text-gray-500 italic">
+                    <h2 class="font-bold mb-3 text-gray-800" data-i18n="control_title">Steuerung</h2>
+
+                    <button onclick="disconnectAll()"
+                        class="w-full mb-4 p-2 rounded text-sm font-bold bg-gray-500 hover:bg-gray-600 text-white transition flex items-center justify-center gap-2">
+                        <span class="text-lg">⏹</span> <span data-i18n="btn_disconnect">Trennen & Stop</span>
+                    </button>
+
+                    <h2 class="font-bold mb-2 text-gray-800 text-sm" data-i18n="mute_title">Stumme User</h2>
+                    <div id="muteList" class="text-xs space-y-1 text-gray-500 italic max-h-32 overflow-y-auto">
                         <span data-i18n="no_muted">Keine</span>
                     </div>
                 </div>
@@ -132,8 +139,8 @@
                             data-i18n="clear_chat">Leeren</button>
                     </div>
                     <div id="messages" class="chat-scroll flex-1 p-4 space-y-3">
-                        <div class="text-gray-400 text-sm text-center mt-10 italic" data-i18n="waiting_msg">Warte uf
-                            Nachrichte...</div>
+                        <div class="text-gray-400 text-sm text-center mt-10 italic" data-i18n="waiting_msg">Warte auf
+                            Nachrichten...</div>
                     </div>
                 </div>
             </div>
@@ -153,17 +160,20 @@
         const translations = {
             de: {
                 status_offline: "Offline",
-                status_connected: "Verbunde",
-                connect_title: "Kanäle verbinde",
+                status_connected: "Verbunden",
+                connect_title: "Kanäle verbinden",
                 settings_title: "Einstellungen",
                 voice_label: "TTS Stimme",
-                btn_twitch: "Twitch Verbinde",
-                btn_youtube: "YouTube Verbinde",
+                btn_twitch: "Twitch verbinden",
+                btn_youtube: "YouTube verbinden",
+                btn_youtube: "YouTube verbinden",
+                control_title: "Steuerung",
+                btn_disconnect: "Trennen & Stop",
                 mute_title: "Stumme User",
                 no_muted: "Keine",
                 chat_title: "Live Chat Nachrichten",
                 clear_chat: "Leeren",
-                waiting_msg: "Warte uf Nachrichte...",
+                waiting_msg: "Warte auf Nachrichten...",
                 mute_btn: "STUMM",
                 ph_twitch: "Kanalname (z.B. gronkh)",
                 ph_youtube: "Channel ID oder Handle"
@@ -176,6 +186,9 @@
                 voice_label: "TTS Voice",
                 btn_twitch: "Connect Twitch",
                 btn_youtube: "Connect YouTube",
+                btn_youtube: "Connect YouTube",
+                control_title: "Controls",
+                btn_disconnect: "Disconnect & Stop",
                 mute_title: "Muted Users",
                 no_muted: "None",
                 chat_title: "Live Chat Messages",
@@ -237,13 +250,23 @@
             socket.emit('join_youtube', id);
         }
 
+        function disconnectAll() {
+            // 1. Lokale Queue leeren
+            audioQueue.length = 0;
+            isPlaying = false;
+            window.speechSynthesis.cancel(); // Stoppt Browser TTS sofort
+
+            // 2. Server informieren
+            socket.emit('disconnect_channels');
+        }
+
         function clearChat() {
             document.getElementById('messages').innerHTML = `<div class="text-gray-400 text-sm text-center mt-10 italic" data-i18n="waiting_msg">${translations[currentLang]['waiting_msg']}</div>`;
         }
 
         socket.on('system_msg', (msg) => {
             let displayMsg = msg;
-            if (msg.includes("Verbunde mit")) displayMsg = currentLang === 'en' ? msg.replace("Verbunde mit", "Connected to") : msg;
+            if (msg.includes("Verbunden mit")) displayMsg = currentLang === 'en' ? msg.replace("Verbunden mit", "Connected to") : msg;
             addMessage('System', displayMsg, 'gray');
         });
 

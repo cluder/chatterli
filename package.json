@@ -10,7 +10,7 @@
     "express": "^4.18.2",
     "socket.io": "^4.7.2",
     "tmi.js": "^1.8.5",
-    "youtube-chat": "*",
+    "googleapis": "^144.0.0",
     "@google-cloud/text-to-speech": "^5.0.1"
   }
 }
