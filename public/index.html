@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,15 +8,42 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        .chat-scroll { max-height: 400px; overflow-y: auto; }
-        .bg-chatterli { background: #fdf2f2; }
-        .btn-ch { background: #e31e24; color: white; transition: 0.2s; }
-        .btn-ch:hover { background: #b1161a; }
+        .chat-scroll {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .bg-chatterli {
+            background: #fdf2f2;
+        }
+
+        .btn-ch {
+            background: #e31e24;
+            color: white;
+            transition: 0.2s;
+        }
+
+        .btn-ch:hover {
+            background: #b1161a;
+        }
+
         /* Flaggen-Button Stil */
-        .lang-btn { opacity: 0.5; transition: 0.2s; cursor: pointer; filter: grayscale(100%); }
-        .lang-btn.active { opacity: 1; font-weight: bold; filter: grayscale(0%); transform: scale(1.1); }
+        .lang-btn {
+            opacity: 0.5;
+            transition: 0.2s;
+            cursor: pointer;
+            filter: grayscale(100%);
+        }
+
+        .lang-btn.active {
+            opacity: 1;
+            font-weight: bold;
+            filter: grayscale(0%);
+            transform: scale(1.1);
+        }
     </style>
 </head>
+
 <body class="bg-chatterli min-h-screen font-sans">
     <div class="max-w-4xl mx-auto p-6">
         <!-- HEADER -->
@@ -23,33 +51,36 @@
             <h1 class="text-3xl font-bold text-red-600 flex items-center gap-2">
                 Chatterli <span class="text-gray-400 text-lg">🇨🇭</span>
             </h1>
-            
+
             <div class="flex items-center gap-4">
                 <!-- Sprachumschalter -->
                 <div class="flex gap-2 bg-white px-2 py-1 rounded-full border shadow-sm">
-                    <button onclick="setLang('de')" id="btn-de" class="lang-btn active text-lg" title="Deutsch">🇩🇪</button>
+                    <button onclick="setLang('de')" id="btn-de" class="lang-btn active text-lg"
+                        title="Deutsch">🇩🇪</button>
                     <div class="text-gray-300">|</div>
                     <button onclick="setLang('en')" id="btn-en" class="lang-btn text-lg" title="English">🇺🇸</button>
                 </div>
-                
+
                 <!-- Status -->
-                <div id="status" class="text-sm px-3 py-1 bg-gray-200 rounded-full text-gray-600 font-medium" data-i18n="status_offline">Offline</div>
+                <div id="status" class="text-sm px-3 py-1 bg-gray-200 rounded-full text-gray-600 font-medium"
+                    data-i18n="status_offline">Offline</div>
             </div>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <!-- SIDEBAR: CONTROLS -->
             <div class="space-y-4">
-                
+
                 <!-- 1. SETTINGS / VOICE BOX (NEU) -->
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-blue-100">
                     <h2 class="font-bold mb-3 text-gray-800 flex items-center gap-2">
-                        <span class="text-blue-500">⚙️</span> 
+                        <span class="text-blue-500">⚙️</span>
                         <span data-i18n="settings_title">Einstellungen</span>
                     </h2>
-                    
+
                     <label class="text-xs font-bold text-gray-500 mb-1 block" data-i18n="voice_label">TTS Stimme</label>
-                    <select id="voiceSelect" onchange="changeVoice()" class="w-full p-2 border rounded text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-blue-200">
+                    <select id="voiceSelect" onchange="changeVoice()"
+                        class="w-full p-2 border rounded text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-blue-200">
                         <option value="de-DE-Neural2-F">🇩🇪 Google DE (Weiblich)</option>
                         <option value="de-DE-Neural2-B">🇩🇪 Google DE (Männlich)</option>
                         <option value="en-US-Neural2-C">🇺🇸 Google EN (Female)</option>
@@ -62,25 +93,30 @@
                 <!-- 2. Channels Box -->
                 <div class="bg-white p-4 rounded-xl shadow-sm border">
                     <h2 class="font-bold mb-3 text-gray-800" data-i18n="connect_title">Kanäle verbinden</h2>
-                    
+
                     <div class="mb-4">
                         <label class="text-xs font-bold text-purple-600 mb-1 block">TWITCH</label>
-                        <input id="twitchChan" type="text" placeholder="Kanalname (z.B. gronkh)" class="w-full p-2 border rounded mb-2 text-sm focus:ring-2 focus:ring-purple-200 outline-none transition">
-                        <button onclick="connectTwitch()" class="w-full btn-ch p-2 rounded text-sm font-bold bg-purple-600 hover:bg-purple-700" data-i18n="btn_twitch">Twitch Verbinden</button>
+                        <input id="twitchChan" type="text" placeholder="Kanalname (z.B. gronkh)"
+                            class="w-full p-2 border rounded mb-2 text-sm focus:ring-2 focus:ring-purple-200 outline-none transition">
+                        <button onclick="connectTwitch()"
+                            class="w-full btn-ch p-2 rounded text-sm font-bold bg-purple-600 hover:bg-purple-700"
+                            data-i18n="btn_twitch">Twitch Verbinden</button>
                     </div>
-                    
+
                     <hr class="my-4 border-gray-100">
-                    
+
                     <div>
                         <label class="text-xs font-bold text-red-600 mb-1 block">YOUTUBE</label>
-                        <input id="youtubeId" type="text" placeholder="Channel ID oder Handle" class="w-full p-2 border rounded mb-2 text-sm focus:ring-2 focus:ring-red-200 outline-none transition">
-                        <button onclick="connectYoutube()" class="w-full btn-ch p-2 rounded text-sm font-bold" data-i18n="btn_youtube">YouTube Verbinden</button>
+                        <input id="youtubeId" type="text" placeholder="Channel ID oder Handle" class="w-full p-2 border
+                        rounded mb-2 text-sm focus:ring-2 focus:ring-red-200 outline-none transition">
+                        <button onclick="connectYoutube()" class="w-full btn-ch p-2 rounded text-sm font-bold"
+                            data-i18n="btn_youtube">YouTube Verbinden</button>
                     </div>
                 </div>
 
                 <!-- 3. Mute Box -->
                 <div class="bg-white p-4 rounded-xl shadow-sm border">
-                    <h2 class="font-bold mb-3 text-gray-800" data-i18n="mute_title">Stummi User</h2>
+                    <h2 class="font-bold mb-3 text-gray-800" data-i18n="mute_title">Stumme User</h2>
                     <div id="muteList" class="text-xs space-y-1 text-gray-500 italic">
                         <span data-i18n="no_muted">Keine</span>
                     </div>
@@ -92,10 +128,12 @@
                 <div id="chatBox" class="bg-white rounded-xl shadow-sm border h-[500px] flex flex-col">
                     <div class="p-3 border-b bg-gray-50 font-bold text-sm text-gray-700 flex justify-between">
                         <span data-i18n="chat_title">Live Chat Nachrichten</span>
-                        <button onclick="clearChat()" class="text-xs text-gray-400 hover:text-red-500" data-i18n="clear_chat">Leeren</button>
+                        <button onclick="clearChat()" class="text-xs text-gray-400 hover:text-red-500"
+                            data-i18n="clear_chat">Leeren</button>
                     </div>
                     <div id="messages" class="chat-scroll flex-1 p-4 space-y-3">
-                        <div class="text-gray-400 text-sm text-center mt-10 italic" data-i18n="waiting_msg">Warte uf Nachrichte...</div>
+                        <div class="text-gray-400 text-sm text-center mt-10 italic" data-i18n="waiting_msg">Warte uf
+                            Nachrichte...</div>
                     </div>
                 </div>
             </div>
@@ -104,14 +142,14 @@
 
     <script>
         const socket = io();
-        
+
         // Queue speichert jetzt Objekte: { type: 'server'|'local', data: ... }
         const audioQueue = [];
         let isPlaying = false;
-        
+
         // --- TRANSLATION LOGIC ---
         let currentLang = localStorage.getItem('chatterli_lang') || 'de';
-        
+
         const translations = {
             de: {
                 status_offline: "Offline",
@@ -121,7 +159,7 @@
                 voice_label: "TTS Stimme",
                 btn_twitch: "Twitch Verbinde",
                 btn_youtube: "YouTube Verbinde",
-                mute_title: "Stummi User",
+                mute_title: "Stumme User",
                 no_muted: "Keine",
                 chat_title: "Live Chat Nachrichten",
                 clear_chat: "Leeren",
@@ -152,7 +190,7 @@
         function setLang(lang) {
             currentLang = lang;
             localStorage.setItem('chatterli_lang', lang);
-            
+
             // Buttons visual update
             document.getElementById('btn-de').classList.toggle('active', lang === 'de');
             document.getElementById('btn-en').classList.toggle('active', lang === 'en');
@@ -179,7 +217,7 @@
             const statusEl = document.getElementById('status');
             statusEl.innerText = translations[currentLang]['status_connected'];
             statusEl.className = "text-sm px-3 py-1 bg-green-100 rounded-full text-green-600 font-medium";
-            
+
             // Sync Voice mit Server (optional, aber gut für reconnect)
             changeVoice();
         });
@@ -225,7 +263,7 @@
 
         socket.on('chat_message', (data) => {
             addMessage(data.user, data.text, data.platform === 'twitch' ? 'purple' : 'red', data.id);
-            
+
             // Audio Queue Logik
             if (data.audio) {
                 // Server hat MP3 Audio geschickt (Google TTS)
@@ -235,14 +273,14 @@
                 // Wir nehmen an, wenn data.audio null ist, ist "local" ausgewählt
                 audioQueue.push({ type: 'local', text: `${data.user}: ${data.text}` });
             }
-            
+
             playNext();
         });
 
         function addMessage(user, text, color, id) {
             const container = document.getElementById('messages');
             if (container.querySelector('[data-i18n="waiting_msg"]')) container.innerHTML = '';
-            
+
             const msgDiv = document.createElement('div');
             msgDiv.className = `p-3 rounded-lg bg-gray-50 border-l-4 border-${color}-500 flex justify-between items-start shadow-sm hover:shadow-md transition`;
             msgDiv.innerHTML = `
@@ -263,7 +301,7 @@
 
         function playNext() {
             if (isPlaying || audioQueue.length === 0) return;
-            
+
             const task = audioQueue[0];
             isPlaying = true;
 
@@ -283,17 +321,17 @@
             } else if (task.type === 'local') {
                 // Lokale Browser Stimme nutzen
                 const utterance = new SpeechSynthesisUtterance(task.text);
-                
+
                 // Optional: Versuchen, Sprache basierend auf App-Einstellung zu setzen
                 // (Die Browser-Erkennung ist oft ungenau, daher simple Logik)
-                utterance.lang = currentLang === 'de' ? 'de-DE' : 'en-US'; 
-                
+                utterance.lang = currentLang === 'de' ? 'de-DE' : 'en-US';
+
                 utterance.onend = () => {
                     audioQueue.shift(); // Task entfernen
                     isPlaying = false;
                     playNext();
                 };
-                
+
                 // Falls Browser Probleme hat
                 utterance.onerror = () => {
                     audioQueue.shift();
@@ -306,4 +344,5 @@
         }
     </script>
 </body>
+
 </html>
