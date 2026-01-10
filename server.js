@@ -67,12 +67,22 @@ io.on('connection', (socket) => {
         twitchClient = new tmi.Client({ channels: [channel] });
         twitchClient.connect().then(() => {
             socket.emit('system_msg', `Verbunden mit Twitch: ${channel}`);
+            socket.emit('twitch_connected', channel);
         }).catch(err => socket.emit('system_msg', `Twitch Fehler: ${err}`));
 
         twitchClient.on('message', (chan, tags, message, self) => {
             if (self) return;
             processMessage('twitch', tags['display-name'], message, socket, currentVoice);
         });
+    });
+
+    socket.on('leave_twitch', () => {
+        if (twitchClient) {
+            twitchClient.disconnect();
+            twitchClient = null;
+            socket.emit('system_msg', 'Twitch Verbindung getrennt.');
+            socket.emit('twitch_disconnected');
+        }
     });
 
     // --- YOUTUBE (Official API) ---
@@ -110,6 +120,7 @@ io.on('connection', (socket) => {
 
             console.log(`Live Chat ID gefunden: ${liveChatId}`);
             socket.emit('system_msg', `YouTube Chat verbunden (Video: ${videoId})`);
+            socket.emit('youtube_connected', videoId);
 
             // Starte Polling für Chat Messages
             let pageToken = null;
@@ -173,6 +184,15 @@ io.on('connection', (socket) => {
         } catch (err) {
             console.error('YouTube Verbindungsfehler:', err);
             socket.emit('system_msg', `YouTube Fehler: ${err.message}`);
+        }
+    });
+
+    socket.on('leave_youtube', () => {
+        if (youtubePollingInterval) {
+            clearInterval(youtubePollingInterval);
+            youtubePollingInterval = null;
+            socket.emit('system_msg', 'YouTube Verbindung getrennt.');
+            socket.emit('youtube_disconnected');
         }
     });
 
@@ -306,10 +326,12 @@ io.on('connection', (socket) => {
         if (twitchClient) {
             twitchClient.disconnect();
             twitchClient = null;
+            socket.emit('twitch_disconnected');
         }
         if (youtubePollingInterval) {
             clearInterval(youtubePollingInterval);
             youtubePollingInterval = null;
+            socket.emit('youtube_disconnected');
         }
         socket.emit('system_msg', 'Alle Verbindungen getrennt und TTS gestoppt.');
     });
