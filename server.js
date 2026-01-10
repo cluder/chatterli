@@ -68,7 +68,10 @@ io.on('connection', (socket) => {
         twitchClient.connect().then(() => {
             socket.emit('system_msg', `Verbunden mit Twitch: ${channel}`);
             socket.emit('twitch_connected', channel);
-        }).catch(err => socket.emit('system_msg', `Twitch Fehler: ${err}`));
+        }).catch(err => {
+            socket.emit('system_msg', `Twitch Fehler: ${err}`);
+            socket.emit('twitch_connect_error');
+        });
 
         twitchClient.on('message', (chan, tags, message, self) => {
             if (self) return;
@@ -98,6 +101,7 @@ io.on('connection', (socket) => {
 
         if (!YOUTUBE_API_KEY) {
             socket.emit('system_msg', 'YouTube Fehler: API Key nicht konfiguriert');
+            socket.emit('youtube_connect_error');
             return;
         }
 
@@ -106,6 +110,7 @@ io.on('connection', (socket) => {
             const videoId = await resolveToVideoId(id);
             if (!videoId) {
                 socket.emit('system_msg', 'Konnte keine Live-Video ID finden. Bitte Video ID direkt eingeben.');
+                socket.emit('youtube_connect_error');
                 return;
             }
 
@@ -115,6 +120,7 @@ io.on('connection', (socket) => {
             const liveChatId = await getLiveChatId(videoId);
             if (!liveChatId) {
                 socket.emit('system_msg', 'Kein aktiver Live Chat gefunden für dieses Video.');
+                socket.emit('youtube_connect_error');
                 return;
             }
 
@@ -184,6 +190,7 @@ io.on('connection', (socket) => {
         } catch (err) {
             console.error('YouTube Verbindungsfehler:', err);
             socket.emit('system_msg', `YouTube Fehler: ${err.message}`);
+            socket.emit('youtube_connect_error');
         }
     });
 

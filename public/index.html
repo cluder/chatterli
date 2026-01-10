@@ -116,6 +116,7 @@
                 <div class="mb-4">
                     <label class="text-xs font-bold text-purple-600 mb-1 block">TWITCH</label>
                     <input id="twitchChan" type="text" placeholder="Kanalname (z.B. gronkh)"
+                        onkeypress="handleEnter(event, 'twitch')"
                         class="w-full p-2 border rounded mb-2 text-sm focus:ring-2 focus:ring-purple-200 outline-none transition">
                     <button id="btnTwitch" onclick="toggleTwitch()"
                         class="w-full btn-ch p-2 rounded text-sm font-bold bg-purple-600 hover:bg-purple-700"
@@ -127,6 +128,7 @@
                 <div>
                     <label class="text-xs font-bold text-red-600 mb-1 block">YOUTUBE</label>
                     <input id="youtubeId" type="text" placeholder="Channel ID oder Handle"
+                        onkeypress="handleEnter(event, 'youtube')"
                         class="w-full p-2 border rounded mb-2 text-sm focus:ring-2 focus:ring-red-200 outline-none transition">
                     <button id="btnYoutube" onclick="toggleYoutube()"
                         class="w-full btn-ch p-2 rounded text-sm font-bold" data-i18n="btn_youtube">YouTube
@@ -304,6 +306,18 @@
             localStorage.setItem('chatterli_volume', currentVolume);
         }
 
+        // --- PERSISTENCE & ENTER LOGIC ---
+        // Load saved channels
+        document.getElementById('twitchChan').value = localStorage.getItem('chatterli_twitch_chan') || '';
+        document.getElementById('youtubeId').value = localStorage.getItem('chatterli_youtube_id') || '';
+
+        function handleEnter(e, platform) {
+            if (e.key === 'Enter') {
+                if (platform === 'twitch') toggleTwitch();
+                if (platform === 'youtube') toggleYoutube();
+            }
+        }
+
         socket.on('connect', () => {
             const statusEl = document.getElementById('status');
             statusEl.innerText = translations[currentLang]['status_connected'];
@@ -347,21 +361,37 @@
         let twitchConnected = false;
         let youtubeConnected = false;
 
+        let twitchTimeout = null;
+
         function toggleTwitch() {
             if (twitchConnected) {
                 socket.emit('leave_twitch');
             } else {
                 const chan = document.getElementById('twitchChan').value;
                 if (!chan) return;
+                // Save to storage
+                localStorage.setItem('chatterli_twitch_chan', chan);
+
                 const btn = document.getElementById('btnTwitch');
                 btn.innerText = "Connecting...";
                 btn.disabled = true;
+
+                // Safety Timeout (15s)
+                if (twitchTimeout) clearTimeout(twitchTimeout);
+                twitchTimeout = setTimeout(() => {
+                    if (!twitchConnected) {
+                        resetTwitchBtn();
+                        alert("Twitch Connection Timeout");
+                    }
+                }, 15000);
+
                 socket.emit('join_twitch', chan);
             }
         }
 
         socket.on('twitch_connected', (channel) => {
             twitchConnected = true;
+            if (twitchTimeout) clearTimeout(twitchTimeout);
             const btn = document.getElementById('btnTwitch');
             btn.innerText = `Verbunden: ${channel} (Trennen)`;
             btn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
@@ -369,14 +399,25 @@
             btn.disabled = false;
         });
 
-        socket.on('twitch_disconnected', () => {
+        socket.on('twitch_connect_error', () => {
+            resetTwitchBtn();
+        });
+
+        function resetTwitchBtn() {
+            if (twitchTimeout) clearTimeout(twitchTimeout);
             twitchConnected = false;
             const btn = document.getElementById('btnTwitch');
             btn.innerText = translations[currentLang]['btn_twitch'];
             btn.classList.add('bg-purple-600', 'hover:bg-purple-700');
             btn.classList.remove('bg-green-600', 'hover:bg-green-700');
             btn.disabled = false;
+        }
+
+        socket.on('twitch_disconnected', () => {
+            resetTwitchBtn();
         });
+
+        let youtubeTimeout = null;
 
         function toggleYoutube() {
             if (youtubeConnected) {
@@ -384,15 +425,29 @@
             } else {
                 const id = document.getElementById('youtubeId').value;
                 if (!id) return;
+                // Save to storage
+                localStorage.setItem('chatterli_youtube_id', id);
+
                 const btn = document.getElementById('btnYoutube');
                 btn.innerText = "Connecting...";
                 btn.disabled = true;
+
+                // Safety Timeout (15s)
+                if (youtubeTimeout) clearTimeout(youtubeTimeout);
+                youtubeTimeout = setTimeout(() => {
+                    if (!youtubeConnected) {
+                        resetYoutubeBtn();
+                        alert("YouTube Connection Timeout");
+                    }
+                }, 15000);
+
                 socket.emit('join_youtube', id);
             }
         }
 
         socket.on('youtube_connected', (id) => {
             youtubeConnected = true;
+            if (youtubeTimeout) clearTimeout(youtubeTimeout);
             const btn = document.getElementById('btnYoutube');
             btn.innerText = `Verbunden (Trennen)`;
             btn.classList.remove('btn-ch');
@@ -400,13 +455,22 @@
             btn.disabled = false;
         });
 
-        socket.on('youtube_disconnected', () => {
+        socket.on('youtube_connect_error', () => {
+            resetYoutubeBtn();
+        });
+
+        function resetYoutubeBtn() {
+            if (youtubeTimeout) clearTimeout(youtubeTimeout);
             youtubeConnected = false;
             const btn = document.getElementById('btnYoutube');
             btn.innerText = translations[currentLang]['btn_youtube'];
             btn.classList.add('btn-ch');
             btn.classList.remove('bg-green-600', 'hover:bg-green-700', 'text-white');
             btn.disabled = false;
+        }
+
+        socket.on('youtube_disconnected', () => {
+            resetYoutubeBtn();
         });
 
         function disconnectAll() {
@@ -469,7 +533,7 @@
                 <div>
                     <div class="flex items-center gap-2">
                         <span class="font-bold text-${color}-600 text-sm">${user}</span>
-                        ${id ? `<span class="text-[10px] text-gray-300">${new Date().toLocaleTimeString()}</span>` : ''}
+                        ${id ? `<span class="text-xs text-gray-400 font-medium">${new Date().toLocaleTimeString()}</span>` : ''}
                     </div>
                     <span class="text-gray-700 text-sm leading-relaxed block mt-1">${text}</span>
                 </div>
