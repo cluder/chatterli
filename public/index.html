@@ -48,9 +48,14 @@
     <div class="max-w-4xl mx-auto p-6">
         <!-- HEADER -->
         <header class="flex items-center justify-between mb-8 border-b pb-4">
-            <h1 class="text-3xl font-bold text-red-600 flex items-center gap-2">
-                Chatterli <span class="text-gray-400 text-lg">🇨🇭</span>
-            </h1>
+            <div class="flex items-center gap-2">
+                <a href="https://chatterli.core-dump.ch/"
+                    class="text-3xl font-bold text-red-600 hover:text-red-700 transition">
+                    Chatterli
+                </a>
+                <span class="text-gray-400 text-lg">🇨🇭</span>
+                <span class="text-xs text-gray-400 font-mono mt-2" title="Version">v2025.01.11</span>
+            </div>
 
             <div class="flex items-center gap-4">
                 <!-- Sprachumschalter -->
@@ -178,6 +183,8 @@
 
         // --- TRANSLATION LOGIC ---
         let currentLang = localStorage.getItem('chatterli_lang') || 'de';
+        let twitchConnected = false;
+        let youtubeConnected = false;
 
         const translations = {
             de: {
@@ -247,6 +254,11 @@
             // Text content update
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
+
+                // Fix: Preserve connected state text
+                if (key === 'btn_twitch' && twitchConnected) return;
+                if (key === 'btn_youtube' && youtubeConnected) return;
+
                 if (translations[lang][key]) {
                     el.innerText = translations[lang][key];
                 }
@@ -366,9 +378,6 @@
         }
 
         // --- TOGGLE LOGIC ---
-        let twitchConnected = false;
-        let youtubeConnected = false;
-
         let twitchTimeout = null;
 
         function toggleTwitch() {
