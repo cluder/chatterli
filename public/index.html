@@ -184,6 +184,7 @@
         // --- TRANSLATION LOGIC ---
         let currentLang = localStorage.getItem('chatterli_lang') || 'de';
         let twitchConnected = false;
+        let currentTwitchChannel = "";
         let youtubeConnected = false;
 
         const translations = {
@@ -206,7 +207,9 @@
                 waiting_msg: "Warte auf Nachrichten...",
                 mute_btn: "STUMM",
                 ph_twitch: "Kanalname (z.B. gronkh)",
-                ph_youtube: "Channel ID oder Handle"
+                ph_youtube: "Channel ID oder Handle",
+                btn_twitch_connected: "Verbunden: $1 (Trennen)",
+                btn_youtube_connected: "Verbunden (Trennen)"
             },
             en: {
                 status_offline: "Offline",
@@ -227,7 +230,9 @@
                 waiting_msg: "Waiting for messages...",
                 mute_btn: "MUTE",
                 ph_twitch: "Channel Name (e.g. ninja)",
-                ph_youtube: "Channel ID or Handle"
+                ph_youtube: "Channel ID or Handle",
+                btn_twitch_connected: "Connected: $1 (Disconnect)",
+                btn_youtube_connected: "Connected (Disconnect)"
             }
         };
 
@@ -243,9 +248,15 @@
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
 
-                // Fix: Preserve connected state text
-                if (key === 'btn_twitch' && twitchConnected) return;
-                if (key === 'btn_youtube' && youtubeConnected) return;
+                // Handle Connected States Dynamic Text
+                if (key === 'btn_twitch' && twitchConnected) {
+                    el.innerText = translations[lang]['btn_twitch_connected'].replace('$1', currentTwitchChannel);
+                    return;
+                }
+                if (key === 'btn_youtube' && youtubeConnected) {
+                    el.innerText = translations[lang]['btn_youtube_connected'];
+                    return;
+                }
 
                 if (translations[lang][key]) {
                     el.innerText = translations[lang][key];
@@ -396,9 +407,10 @@
 
         socket.on('twitch_connected', (channel) => {
             twitchConnected = true;
+            currentTwitchChannel = channel;
             if (twitchTimeout) clearTimeout(twitchTimeout);
             const btn = document.getElementById('btnTwitch');
-            btn.innerText = `Verbunden: ${channel} (Trennen)`;
+            btn.innerText = translations[currentLang]['btn_twitch_connected'].replace('$1', channel);
             btn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
             btn.classList.add('bg-green-600', 'hover:bg-green-700');
             btn.disabled = false;
@@ -454,7 +466,7 @@
             youtubeConnected = true;
             if (youtubeTimeout) clearTimeout(youtubeTimeout);
             const btn = document.getElementById('btnYoutube');
-            btn.innerText = `Verbunden (Trennen)`;
+            btn.innerText = translations[currentLang]['btn_youtube_connected'];
             btn.classList.remove('btn-ch');
             btn.classList.add('bg-green-600', 'hover:bg-green-700', 'text-white');
             btn.disabled = false;
