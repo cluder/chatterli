@@ -383,8 +383,35 @@
             if (twitchConnected) {
                 socket.emit('leave_twitch');
             } else {
-                const chan = document.getElementById('twitchChan').value;
+                let chan = document.getElementById('twitchChan').value.trim();
+
+                // URL Parsing Logic
+                // Entfernt https://, www., twitch.tv/ und alles nach dem Namen (z.B. ?search=...)
+                // Bsp: https://www.twitch.tv/kaezuhots -> kaezuhots
+                // Bsp: twitch.tv/kaezuhots -> kaezuhots
+                try {
+                    // Wenn es wie eine URL aussieht (beinhaltet twitch.tv oder /)
+                    if (chan.includes('twitch.tv') || chan.includes('/')) {
+                        // Falls kein Protokoll, hänge https:// vorne dran für sauberes URL parsing
+                        if (!chan.startsWith('http')) {
+                            chan = 'https://' + chan;
+                        }
+                        const url = new URL(chan);
+                        // pathname ist z.B. /kaezuhots oder /kaezuhots/videos
+                        const parts = url.pathname.split('/').filter(p => p.length > 0);
+                        if (parts.length > 0) {
+                            chan = parts[0]; // Nehme das erste Segment als Kanalname
+                        }
+                    }
+                } catch (e) {
+                    console.error("Fehler beim Parsen der URL, versuche Originalwert", e);
+                }
+
                 if (!chan) return;
+
+                // Update input to show clean name
+                document.getElementById('twitchChan').value = chan;
+
                 // Save to storage
                 localStorage.setItem('chatterli_twitch_chan', chan);
 
