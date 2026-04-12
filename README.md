@@ -1,6 +1,7 @@
 # Chatterli - Stream TTS 🇨🇭
 
 **Chatterli** is a real-time Text-to-Speech (TTS) dashboard for Twitch and YouTube streamers. It reads chat messages aloud using high-quality Google Cloud Neural voices or your browser's local TTS engine.
+see https://chatterli.core-dump.ch/
 
 <img width="1148" height="896" alt="image" src="https://github.com/user-attachments/assets/0ec8634b-556a-41f8-8115-5f7020964691" />
  (Example Screenshot)
