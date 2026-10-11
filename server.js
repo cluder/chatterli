@@ -44,6 +44,7 @@ io.on('connection', (socket) => {
 
     // Standard: Google TTS
     let currentVoice = 'de-DE-Neural2-F';
+    let muteCommands = true;
 
     let twitchClient = null;
     let youtubePollingInterval = null;
@@ -57,6 +58,12 @@ io.on('connection', (socket) => {
             currentVoice = voiceId;
             console.log(`Stimme für ${socket.id} geändert auf: ${voiceId}`);
         }
+    });
+
+    // --- BEFEHLE STUMMSCHALTEN TOGGLE ---
+    socket.on('set_mute_commands', (enabled) => {
+        muteCommands = Boolean(enabled);
+        console.log(`Befehle stummschalten für ${socket.id}: ${muteCommands}`);
     });
 
     // --- TWITCH ---
@@ -75,7 +82,7 @@ io.on('connection', (socket) => {
 
         twitchClient.on('message', (chan, tags, message, self) => {
             if (self) return;
-            processMessage('twitch', tags['display-name'], message, socket, currentVoice);
+            processMessage('twitch', tags['display-name'], message, socket, currentVoice, muteCommands);
         });
     });
 
@@ -163,7 +170,7 @@ io.on('connection', (socket) => {
                         const text = msg.snippet.displayMessage || msg.snippet.textMessageDetails?.messageText || '';
 
                         if (text) {
-                            processMessage('youtube', user, text, socket, currentVoice);
+                            processMessage('youtube', user, text, socket, currentVoice, muteCommands);
                         }
                     }
 
@@ -344,11 +351,27 @@ io.on('connection', (socket) => {
     });
 });
 
-async function processMessage(platform, user, text, socket, voiceId) {
+async function processMessage(platform, user, text, socket, voiceId, muteCommands = true) {
     const lowUser = user.toLowerCase();
 
     if (globalBlockedUsers.has(lowUser)) return;
-    if (blockedPrefixes.some(p => text.startsWith(p))) return;
+
+    const trimmed = text.trim();
+    const isCommand = blockedPrefixes.some(p => trimmed.startsWith(p));
+
+    if (muteCommands && isCommand) {
+        console.log(`Befehl stummgeschaltet (${user}): ${text}`);
+        socket.emit('chat_message', {
+            platform,
+            user,
+            text,
+            audio: null,
+            isMuted: true,
+            isCommand: true,
+            id: Date.now()
+        });
+        return;
+    }
 
     console.log(`Verarbeite (${voiceId}): ${user}: ${text}`);
 
@@ -371,6 +394,8 @@ async function processMessage(platform, user, text, socket, voiceId) {
             user,
             text,
             audio: audioBase64,
+            isMuted: false,
+            isCommand,
             id: Date.now()
         });
     } catch (err) {
